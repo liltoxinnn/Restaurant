@@ -114,6 +114,7 @@ export default function Sales() {
   const [saving, setSaving] = useState(false);
 
   const [receiptOrder, setReceiptOrder] = useState(null);
+  const [nextOrderNumber, setNextOrderNumber] = useState(null);
 
   const fetchMenuItems = async () => {
     setMenuLoading(true);
@@ -127,8 +128,18 @@ export default function Sales() {
     }
   };
 
+  const fetchNextOrderNumber = async () => {
+    try {
+      const res = await salesApi.getNextOrderNumber();
+      setNextOrderNumber(res.data.nextOrderNumber);
+    } catch {
+      // purely a UI preview - not worth surfacing an error for
+    }
+  };
+
   useEffect(() => {
     fetchMenuItems();
+    fetchNextOrderNumber();
   }, []);
 
   const categories = useMemo(
@@ -202,6 +213,7 @@ export default function Sales() {
       setSuccess('Order placed successfully — it now appears in Orders.');
       setReceiptOrder(res.data);
       clearOrder();
+      fetchNextOrderNumber();
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to place order'));
     } finally {
@@ -293,7 +305,10 @@ export default function Sales() {
         {/* Current order / cart */}
         <div className="card flex w-full flex-col lg:sticky lg:top-20 lg:w-96 lg:shrink-0">
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-gray-800">Current Order</h3>
+            <h3 className="text-base font-semibold text-gray-800">
+              Current Order
+              {nextOrderNumber && <span className="ml-2 font-normal text-gray-400">#{nextOrderNumber}</span>}
+            </h3>
             {cart.length > 0 && (
               <button type="button" onClick={clearOrder} className="text-xs font-medium text-gray-400 hover:text-red-600">
                 Clear

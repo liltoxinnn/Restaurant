@@ -2,6 +2,7 @@ const express = require('express');
 const {
   getSales,
   getSaleById,
+  getNextOrderNumber,
   createSale,
   updatePaymentStatus,
   deleteSale,
@@ -15,6 +16,7 @@ const router = express.Router();
 router.use(protect, authorize('ADMIN', 'MANAGER', 'CASHIER'));
 
 router.get('/', getSales);
+router.get('/next-order-number', getNextOrderNumber);
 router.get('/:id', getSaleById);
 router.post('/', validate(createSaleSchema), createSale);
 router.patch('/:id/payment-status', validate(updatePaymentStatusSchema), updatePaymentStatus);
