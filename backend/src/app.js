@@ -1,3 +1,5 @@
+const path = require('path');
+const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -36,6 +38,20 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', routes);
+
+// In production, the deploy build copies the built frontend into
+// backend/public (see ../../scripts/copy-frontend-build.js) so the API and
+// UI are served from one origin. Locally this directory never exists, so
+// none of this runs and local dev behaves exactly as before.
+const publicDir = path.join(__dirname, '..', 'public');
+if (fs.existsSync(publicDir)) {
+  app.use(express.static(publicDir));
+  app.get(/^(?!\/api).*/, (req, res, next) => {
+    res.sendFile(path.join(publicDir, 'index.html'), (err) => {
+      if (err) next(err);
+    });
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);
