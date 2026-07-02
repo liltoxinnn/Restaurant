@@ -126,6 +126,25 @@ const deleteStockItem = asyncHandler(async (req, res) => {
     throw new AppError('Stock item not found', 404);
   }
 
+  const [ingredientUsageCount, purchaseUsageCount] = await Promise.all([
+    prisma.menuItemIngredient.count({ where: { stockItemId: id } }),
+    prisma.purchaseItem.count({ where: { stockItemId: id } }),
+  ]);
+
+  if (ingredientUsageCount > 0) {
+    throw new AppError(
+      `Cannot delete "${existing.name}" because it is used as an ingredient in ${ingredientUsageCount} menu item(s). Remove it from those menu items first.`,
+      409
+    );
+  }
+
+  if (purchaseUsageCount > 0) {
+    throw new AppError(
+      `Cannot delete "${existing.name}" because it appears in ${purchaseUsageCount} purchase record(s). Delete those purchases first.`,
+      409
+    );
+  }
+
   await prisma.stockItem.delete({ where: { id } });
 
   return success(res, { message: 'Stock item deleted successfully', data: null });

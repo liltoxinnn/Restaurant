@@ -99,6 +99,14 @@ const deleteMenuItem = asyncHandler(async (req, res) => {
     throw new AppError('Menu item not found', 404);
   }
 
+  const saleCount = await prisma.saleItem.count({ where: { menuItemId: id } });
+  if (saleCount > 0) {
+    throw new AppError(
+      `Cannot delete "${existing.name}" because it appears in ${saleCount} past sale(s). Disable it instead of deleting it.`,
+      409
+    );
+  }
+
   await prisma.menuItem.delete({ where: { id } });
 
   return success(res, { message: 'Menu item deleted successfully', data: null });
