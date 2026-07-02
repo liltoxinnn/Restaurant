@@ -23,7 +23,7 @@ export default function Navbar({ onMenuClick }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
           </svg>
         </button>
-        <h1 className="text-lg font-semibold text-gray-800">Restaurant Management</h1>
+        <h1 className="text-lg font-semibold text-gray-800">Le Coin des Pêcheurs</h1>
       </div>
 
       <div className="flex items-center gap-4">

@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import getErrorMessage from '../utils/getErrorMessage';
 import Alert from '../components/Alert';
+import Logo from '../components/Logo';
 
 export default function Login() {
   const { login } = useAuth();
@@ -34,10 +35,8 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-900 to-gray-700 px-4">
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600 text-xl font-bold text-white">
-            R
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Restaurant Management</h1>
+          <Logo className="mx-auto mb-3 h-16 w-16" fallbackTextClassName="text-xl" />
+          <h1 className="text-2xl font-bold text-gray-900">Le Coin des Pêcheurs</h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to your account to continue</p>
         </div>
 

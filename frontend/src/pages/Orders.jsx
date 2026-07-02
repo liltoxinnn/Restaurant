@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import * as salesApi from '../api/sales';
 import DataTable from '../components/DataTable';
 import Alert from '../components/Alert';
+import Modal from '../components/Modal';
+import Receipt from '../components/Receipt';
 import { useAuth } from '../context/AuthContext';
 import getErrorMessage from '../utils/getErrorMessage';
 import { formatCurrency, formatDateTime } from '../utils/format';
@@ -16,6 +18,7 @@ export default function Orders() {
   const [success, setSuccess] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('');
+  const [receiptOrder, setReceiptOrder] = useState(null);
 
   const fetchOrders = async (params = {}) => {
     setLoading(true);
@@ -95,6 +98,19 @@ export default function Orders() {
         </button>
       ),
     },
+    {
+      key: 'receipt',
+      header: 'Receipt',
+      render: (row) => (
+        <button
+          type="button"
+          className="text-sm font-medium text-primary-600 hover:underline"
+          onClick={() => setReceiptOrder(row)}
+        >
+          View
+        </button>
+      ),
+    },
     ...(canDelete
       ? [
           {
@@ -161,6 +177,18 @@ export default function Orders() {
       </div>
 
       <DataTable columns={columns} data={orders} loading={loading} emptyMessage="No orders found." />
+
+      <Modal open={Boolean(receiptOrder)} onClose={() => setReceiptOrder(null)} title="Order Receipt" size="sm">
+        <Receipt sale={receiptOrder} />
+        <div className="no-print mt-4 flex justify-end gap-3">
+          <button type="button" className="btn-secondary" onClick={() => setReceiptOrder(null)}>
+            Close
+          </button>
+          <button type="button" className="btn-primary" onClick={() => window.print()}>
+            Print Receipt
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
