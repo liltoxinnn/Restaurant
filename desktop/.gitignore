@@ -1,0 +1,7 @@
+node_modules/
+dist/
+build/
+server/public/
+server/prisma/*.db
+server/prisma/build.db
+resources/template.db
