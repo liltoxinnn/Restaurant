@@ -323,6 +323,7 @@ async function main() {
       saleDate: dateInCurrentMonth(now.getDate()),
       paymentMethod: 'CASH',
       discount: 0,
+      isPaid: true,
       items: [
         { menuItem: 'Classic Burger', quantity: 2 },
         { menuItem: 'Soda', quantity: 2 },
@@ -333,6 +334,7 @@ async function main() {
       saleDate: dateInCurrentMonth(Math.max(now.getDate() - 1, 1)),
       paymentMethod: 'CARD',
       discount: 5,
+      isPaid: true,
       items: [
         { menuItem: 'Cheeseburger Deluxe', quantity: 1 },
         { menuItem: 'French Fries', quantity: 1 },
@@ -344,6 +346,7 @@ async function main() {
       saleDate: dateInCurrentMonth(now.getDate()),
       paymentMethod: 'MOBILE',
       discount: 0,
+      isPaid: false,
       items: [{ menuItem: 'Grilled Chicken Sandwich', quantity: 3 }],
     },
     {
@@ -351,6 +354,7 @@ async function main() {
       saleDate: dateInCurrentMonth(now.getDate()),
       paymentMethod: 'CASH',
       discount: 5,
+      isPaid: false,
       items: [
         { menuItem: 'Caesar Salad', quantity: 2 },
         { menuItem: 'Soda', quantity: 2 },
@@ -361,6 +365,7 @@ async function main() {
       saleDate: dateInCurrentMonth(Math.max(now.getDate() - 1, 1)),
       paymentMethod: 'ONLINE',
       discount: 0,
+      isPaid: true,
       items: [
         { menuItem: 'Shrimp Basket', quantity: 1 },
         { menuItem: 'Margherita Pizza', quantity: 1 },
@@ -371,6 +376,7 @@ async function main() {
       saleDate: dateInPreviousMonth(15),
       paymentMethod: 'CASH',
       discount: 0,
+      isPaid: true,
       items: [
         { menuItem: 'Classic Burger', quantity: 4 },
         { menuItem: 'French Fries', quantity: 4 },
@@ -398,6 +404,7 @@ async function main() {
         saleDate: sale.saleDate,
         paymentMethod: sale.paymentMethod,
         discount: sale.discount,
+        isPaid: sale.isPaid,
         totalAmount,
         items: { create: items },
       },

@@ -203,6 +203,7 @@ model Sale {
   totalAmount   Float         @default(0)
   discount      Float         @default(0)
   paymentMethod PaymentMethod @default(CASH)
+  isPaid        Boolean       @default(false)
   saleDate      DateTime      @default(now())
   createdAt     DateTime      @default(now())
 

@@ -175,6 +175,7 @@ DELETE /api/menu/:id/ingredients/:ingredientId
 
 GET    /api/sales
 POST   /api/sales
+PATCH  /api/sales/:id/payment-status
 DELETE /api/sales/:id
 
 GET    /api/expenses
