@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import * as salesApi from '../api/sales';
 import * as menuApi from '../api/menu';
-import DataTable from '../components/DataTable';
 import Alert from '../components/Alert';
-import { useAuth } from '../context/AuthContext';
 import getErrorMessage from '../utils/getErrorMessage';
-import { formatCurrency, formatDateTime } from '../utils/format';
+import { formatCurrency } from '../utils/format';
 
 const TILE_COLORS = [
   { bg: 'bg-orange-100', text: 'text-orange-700' },
@@ -100,11 +99,6 @@ function CartLine({ line, onIncrement, onDecrement, onRemove }) {
 }
 
 export default function Sales() {
-  const { hasRole } = useAuth();
-  const canDeleteSales = hasRole('ADMIN', 'MANAGER');
-
-  const [view, setView] = useState('pos');
-
   const [menuItems, setMenuItems] = useState([]);
   const [menuLoading, setMenuLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -116,10 +110,6 @@ export default function Sales() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
-
-  const [sales, setSales] = useState([]);
-  const [salesLoading, setSalesLoading] = useState(true);
-  const [historyError, setHistoryError] = useState('');
 
   const fetchMenuItems = async () => {
     setMenuLoading(true);
@@ -133,22 +123,8 @@ export default function Sales() {
     }
   };
 
-  const fetchSales = async () => {
-    setSalesLoading(true);
-    setHistoryError('');
-    try {
-      const res = await salesApi.getSales();
-      setSales(res.data);
-    } catch (err) {
-      setHistoryError(getErrorMessage(err, 'Failed to load sales'));
-    } finally {
-      setSalesLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchMenuItems();
-    fetchSales();
   }, []);
 
   const categories = useMemo(
@@ -219,9 +195,8 @@ export default function Sales() {
         paymentMethod,
         items: cart.map((line) => ({ menuItemId: line.menuItem.id, quantity: line.quantity })),
       });
-      setSuccess('Order placed successfully and stock updated');
+      setSuccess('Order placed successfully — it now appears in Orders.');
       clearOrder();
-      fetchSales();
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to place order'));
     } finally {
@@ -229,224 +204,163 @@ export default function Sales() {
     }
   };
 
-  const handleDeleteSale = async (sale) => {
-    if (!window.confirm(`Delete sale #${sale.id}? Consumed stock will be restored.`)) return;
-    try {
-      await salesApi.deleteSale(sale.id);
-      fetchSales();
-    } catch (err) {
-      setHistoryError(getErrorMessage(err, 'Failed to delete sale'));
-    }
-  };
-
-  const historyColumns = [
-    { key: 'id', header: 'Sale #' },
-    { key: 'saleDate', header: 'Date', render: (row) => formatDateTime(row.saleDate) },
-    { key: 'user', header: 'Cashier', render: (row) => row.user?.username || '-' },
-    { key: 'items', header: 'Items', render: (row) => row.items?.length || 0 },
-    { key: 'discount', header: 'Discount', render: (row) => formatCurrency(row.discount) },
-    { key: 'paymentMethod', header: 'Payment' },
-    { key: 'totalAmount', header: 'Total', render: (row) => formatCurrency(row.totalAmount) },
-    ...(canDeleteSales
-      ? [
-          {
-            key: 'actions',
-            header: 'Actions',
-            render: (row) => (
-              <button
-                type="button"
-                className="text-sm font-medium text-red-600 hover:underline"
-                onClick={() => handleDeleteSale(row)}
-              >
-                Delete
-              </button>
-            ),
-          },
-        ]
-      : []),
-  ];
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Sales</h2>
-          <p className="text-sm text-gray-500">Place new orders or review past sales</p>
+          <p className="text-sm text-gray-500">Tap products to build an order</p>
         </div>
-        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setView('pos')}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              view === 'pos' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            New Sale
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('history')}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
-              view === 'history' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-            }`}
-          >
-            Sale History
-          </button>
-        </div>
+        <Link to="/orders" className="btn-outline">
+          View Orders
+        </Link>
       </div>
 
-      {view === 'history' ? (
-        <div className="space-y-4">
-          <Alert type="error" message={historyError} onClose={() => setHistoryError('')} />
-          <DataTable columns={historyColumns} data={sales} loading={salesLoading} emptyMessage="No sales recorded yet." />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-          {/* Product selection */}
-          <div className="flex-1 space-y-4">
-            <div className="card space-y-3">
-              <div className="relative">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        {/* Product selection */}
+        <div className="flex-1 space-y-4">
+          <div className="card space-y-3">
+            <div className="relative">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+              >
+                <circle cx="11" cy="11" r="7" />
+                <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+              </svg>
+              <input
+                type="text"
+                className="input pl-9"
+                placeholder="Search all products..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setCategory(cat)}
+                  className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    category === cat
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                  <circle cx="11" cy="11" r="7" />
-                  <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
-                </svg>
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            {menuLoading ? (
+              <p className="col-span-full py-10 text-center text-gray-400">Loading menu...</p>
+            ) : visibleItems.length === 0 ? (
+              <p className="col-span-full py-10 text-center text-gray-400">No menu items match your search.</p>
+            ) : (
+              visibleItems.map((item) => {
+                const line = cart.find((l) => l.menuItem.id === item.id);
+                return (
+                  <ProductCard
+                    key={item.id}
+                    item={item}
+                    quantityInCart={line?.quantity || 0}
+                    onAdd={addToCart}
+                  />
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Current order / cart */}
+        <div className="card flex w-full flex-col lg:sticky lg:top-20 lg:w-96 lg:shrink-0">
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-base font-semibold text-gray-800">Current Order</h3>
+            {cart.length > 0 && (
+              <button type="button" onClick={clearOrder} className="text-xs font-medium text-gray-400 hover:text-red-600">
+                Clear
+              </button>
+            )}
+          </div>
+
+          <Alert type="error" message={error} onClose={() => setError('')} />
+          <Alert type="success" message={success} onClose={() => setSuccess('')} />
+
+          <div className="max-h-[45vh] min-h-[3rem] divide-y divide-gray-100 overflow-y-auto">
+            {cart.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gray-400">Tap a product to add it to the order.</p>
+            ) : (
+              cart.map((line) => (
+                <CartLine
+                  key={line.menuItem.id}
+                  line={line}
+                  onIncrement={incrementLine}
+                  onDecrement={decrementLine}
+                  onRemove={removeLine}
+                />
+              ))
+            )}
+          </div>
+
+          <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="label">Discount</label>
                 <input
-                  type="text"
-                  className="input pl-9"
-                  placeholder="Search all products..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
                 />
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                {categories.map((cat) => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                      category === cat
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
+              <div>
+                <label className="label">Payment</label>
+                <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                  <option value="CASH">Cash</option>
+                  <option value="CARD">Card</option>
+                  <option value="MOBILE">Mobile</option>
+                  <option value="ONLINE">Online</option>
+                </select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
-              {menuLoading ? (
-                <p className="col-span-full py-10 text-center text-gray-400">Loading menu...</p>
-              ) : visibleItems.length === 0 ? (
-                <p className="col-span-full py-10 text-center text-gray-400">No menu items match your search.</p>
-              ) : (
-                visibleItems.map((item) => {
-                  const line = cart.find((l) => l.menuItem.id === item.id);
-                  return (
-                    <ProductCard
-                      key={item.id}
-                      item={item}
-                      quantityInCart={line?.quantity || 0}
-                      onAdd={addToCart}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* Current order / cart */}
-          <div className="card flex w-full flex-col lg:sticky lg:top-20 lg:w-96 lg:shrink-0">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-gray-800">Current Order</h3>
-              {cart.length > 0 && (
-                <button type="button" onClick={clearOrder} className="text-xs font-medium text-gray-400 hover:text-red-600">
-                  Clear
-                </button>
-              )}
-            </div>
-
-            <Alert type="error" message={error} onClose={() => setError('')} />
-            <Alert type="success" message={success} onClose={() => setSuccess('')} />
-
-            <div className="max-h-[45vh] min-h-[3rem] divide-y divide-gray-100 overflow-y-auto">
-              {cart.length === 0 ? (
-                <p className="py-8 text-center text-sm text-gray-400">Tap a product to add it to the order.</p>
-              ) : (
-                cart.map((line) => (
-                  <CartLine
-                    key={line.menuItem.id}
-                    line={line}
-                    onIncrement={incrementLine}
-                    onDecrement={decrementLine}
-                    onRemove={removeLine}
-                  />
-                ))
-              )}
-            </div>
-
-            <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">Discount</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className="input"
-                    value={discount}
-                    onChange={(e) => setDiscount(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="label">Payment</label>
-                  <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                    <option value="CASH">Cash</option>
-                    <option value="CARD">Card</option>
-                    <option value="MOBILE">Mobile</option>
-                    <option value="ONLINE">Online</option>
-                  </select>
-                </div>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between text-gray-500">
+                <span>Subtotal</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
-
-              <div className="space-y-1 text-sm">
+              {Number(discount) > 0 && (
                 <div className="flex justify-between text-gray-500">
-                  <span>Subtotal</span>
-                  <span>{formatCurrency(subtotal)}</span>
+                  <span>Discount</span>
+                  <span>-{formatCurrency(discount)}</span>
                 </div>
-                {Number(discount) > 0 && (
-                  <div className="flex justify-between text-gray-500">
-                    <span>Discount</span>
-                    <span>-{formatCurrency(discount)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-lg font-semibold text-gray-900">
-                  <span>Total</span>
-                  <span>{formatCurrency(total)}</span>
-                </div>
+              )}
+              <div className="flex justify-between text-lg font-semibold text-gray-900">
+                <span>Total</span>
+                <span>{formatCurrency(total)}</span>
               </div>
-
-              <button
-                type="button"
-                onClick={handlePlaceOrder}
-                disabled={saving || cart.length === 0}
-                className="btn-primary w-full py-3 text-base"
-              >
-                {saving ? 'Placing order...' : 'Place Order'}
-              </button>
             </div>
+
+            <button
+              type="button"
+              onClick={handlePlaceOrder}
+              disabled={saving || cart.length === 0}
+              className="btn-primary w-full py-3 text-base"
+            >
+              {saving ? 'Placing order...' : 'Place Order'}
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

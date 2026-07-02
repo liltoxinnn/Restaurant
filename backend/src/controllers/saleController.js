@@ -16,10 +16,11 @@ const saleInclude = {
 // @route   GET /api/sales
 // @access  Private
 const getSales = asyncHandler(async (req, res) => {
-  const { paymentMethod, from, to } = req.query;
+  const { paymentMethod, from, to, isPaid } = req.query;
 
   const where = {};
   if (paymentMethod) where.paymentMethod = paymentMethod;
+  if (isPaid !== undefined) where.isPaid = isPaid === 'true';
   const gte = parseDateOrUndefined(from);
   const lte = parseDateOrUndefined(to);
   if (gte || lte) {
@@ -156,6 +157,30 @@ const createSale = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Mark an order as paid or unpaid
+// @route   PATCH /api/sales/:id/payment-status
+// @access  Private/Admin,Manager,Cashier
+const updatePaymentStatus = asyncHandler(async (req, res) => {
+  const id = Number(req.params.id);
+  const { isPaid } = req.body;
+
+  const existing = await prisma.sale.findUnique({ where: { id } });
+  if (!existing) {
+    throw new AppError('Sale not found', 404);
+  }
+
+  const sale = await prisma.sale.update({
+    where: { id },
+    data: { isPaid },
+    include: saleInclude,
+  });
+
+  return success(res, {
+    message: `Order marked as ${isPaid ? 'paid' : 'unpaid'}`,
+    data: sale,
+  });
+});
+
 // @desc    Delete a sale (restocks the ingredients that were consumed)
 // @route   DELETE /api/sales/:id
 // @access  Private/Admin,Manager
@@ -191,4 +216,4 @@ const deleteSale = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getSales, getSaleById, createSale, deleteSale };
+module.exports = { getSales, getSaleById, createSale, updatePaymentStatus, deleteSale };

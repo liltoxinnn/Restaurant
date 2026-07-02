@@ -15,6 +15,7 @@ The system is split into two independent apps:
 - Stock & ingredient inventory tracking with low-stock alerts
 - Menu management with per-item ingredient recipes
 - Sales that automatically validate and decrement ingredient stock (with clear "insufficient stock" errors)
+- POS-style Sales screen (search/category-filtered product grid + live cart) and a separate Orders page to track and toggle each order's paid/unpaid status
 - Purchases that automatically increment stock quantities
 - Supplier management
 - Employee management with salary/bonus/advance/overtime/deduction payments
@@ -161,7 +162,7 @@ Suppliers   GET/POST/PUT/DELETE /suppliers
 Stock       GET/POST/PUT/DELETE /stock, GET /stock/low-stock
 Purchases   GET/POST/PUT/DELETE /purchases      (increments stock on create)
 Menu        GET/POST/PUT/DELETE /menu, /menu/:id/ingredients
-Sales       GET/POST/DELETE /sales               (validates & decrements stock on create)
+Sales       GET/POST/DELETE /sales, PATCH /sales/:id/payment-status (validates & decrements stock on create)
 Expenses    GET/POST/PUT/DELETE /expenses
 Reports     GET /reports/dashboard, /reports/sales/daily, /reports/sales/monthly,
                 /reports/expenses/monthly, /reports/profit/monthly, /reports/stock,

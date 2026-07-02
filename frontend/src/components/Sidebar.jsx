@@ -42,6 +42,11 @@ const icons = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m-10 0a2 2 0 100 4 2 2 0 000-4zm10 0a2 2 0 100 4 2 2 0 000-4z" />
     </svg>
   ),
+  orders: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4" />
+    </svg>
+  ),
   expenses: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-2M9 12h11m0 0l-3-3m3 3l-3 3" />
@@ -63,6 +68,7 @@ const navItems = [
   { to: '/purchases', label: 'Purchases', icon: 'purchases', roles: ['ADMIN', 'MANAGER'] },
   { to: '/menu', label: 'Menu', icon: 'menu', roles: ['ADMIN', 'MANAGER', 'CASHIER', 'EMPLOYEE'] },
   { to: '/sales', label: 'Sales', icon: 'sales', roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
+  { to: '/orders', label: 'Orders', icon: 'orders', roles: ['ADMIN', 'MANAGER', 'CASHIER'] },
   { to: '/expenses', label: 'Expenses', icon: 'expenses', roles: ['ADMIN', 'MANAGER'] },
   { to: '/reports', label: 'Reports', icon: 'reports', roles: ['ADMIN', 'MANAGER'] },
 ];

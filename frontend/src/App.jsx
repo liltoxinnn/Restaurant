@@ -10,6 +10,7 @@ import Suppliers from './pages/Suppliers';
 import Purchases from './pages/Purchases';
 import Menu from './pages/Menu';
 import Sales from './pages/Sales';
+import Orders from './pages/Orders';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
 import NotFound from './pages/NotFound';
@@ -77,6 +78,14 @@ export default function App() {
           element={
             <ProtectedRoute roles={SALES_ROLES}>
               <Sales />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/orders"
+          element={
+            <ProtectedRoute roles={SALES_ROLES}>
+              <Orders />
             </ProtectedRoute>
           }
         />

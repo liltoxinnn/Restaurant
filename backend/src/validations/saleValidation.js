@@ -12,4 +12,8 @@ const createSaleSchema = z.object({
   items: z.array(saleItemSchema).min(1, 'At least one sale item is required'),
 });
 
-module.exports = { createSaleSchema };
+const updatePaymentStatusSchema = z.object({
+  isPaid: z.boolean(),
+});
+
+module.exports = { createSaleSchema, updatePaymentStatusSchema };
