@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Logo from './Logo';
 
 const icons = {
   dashboard: (
@@ -92,11 +93,9 @@ export default function Sidebar({ open, onClose }) {
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex h-16 shrink-0 items-center gap-2 px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600 text-lg font-bold">
-            R
-          </div>
-          <span className="text-lg font-semibold tracking-tight">Restaurant</span>
+        <div className="flex h-16 shrink-0 items-center gap-2 px-4">
+          <Logo className="h-10 w-10" />
+          <span className="text-base font-semibold leading-tight tracking-tight">Le Coin des Pêcheurs</span>
         </div>
 
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

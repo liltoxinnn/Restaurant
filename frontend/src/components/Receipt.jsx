@@ -1,4 +1,5 @@
 import { formatCurrency, formatDateTime } from '../utils/format';
+import Logo from './Logo';
 
 export default function Receipt({ sale }) {
   if (!sale) return null;
@@ -8,7 +9,8 @@ export default function Receipt({ sale }) {
   return (
     <div className="receipt-print-area mx-auto w-full max-w-xs font-mono text-sm text-gray-900">
       <div className="text-center">
-        <p className="text-base font-bold">Restaurant</p>
+        <Logo className="mx-auto mb-2 h-14 w-14" fallbackTextClassName="text-base" />
+        <p className="text-base font-bold">Le Coin des Pêcheurs</p>
         <p className="text-xs text-gray-500">Order Receipt</p>
       </div>
 
