@@ -2,13 +2,16 @@ const asyncHandler = require('../utils/asyncHandler');
 const { verifyToken } = require('../utils/jwt');
 const prisma = require('../config/database');
 const { AppError } = require('../utils/apiResponse');
+const { COOKIE_NAME } = require('../utils/cookie');
 
-// Verifies the JWT Bearer token and attaches the authenticated user to req.user.
+// Verifies the JWT and attaches the authenticated user to req.user. The
+// token is read from the httpOnly auth cookie set at login/register; a
+// Bearer header is also accepted as a fallback for non-browser API clients.
 const protect = asyncHandler(async (req, res, next) => {
-  let token;
-  const authHeader = req.headers.authorization;
+  let token = req.cookies?.[COOKIE_NAME];
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  const authHeader = req.headers.authorization;
+  if (!token && authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.split(' ')[1];
   }
 

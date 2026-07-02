@@ -7,31 +7,35 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // The JWT lives in an httpOnly cookie the browser sends automatically, so
+  // on load we ask the API who we are rather than trusting anything cached
+  // in JS-accessible storage.
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-
-    if (token && storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const restoreSession = async () => {
+      try {
+        const res = await authApi.getMe();
+        setUser(res.data);
+      } catch {
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    restoreSession();
   }, []);
 
   const login = async (email, password) => {
     const res = await authApi.login({ email, password });
-    const { user: loggedInUser, token } = res.data;
-
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(loggedInUser));
-    setUser(loggedInUser);
-
-    return loggedInUser;
+    setUser(res.data.user);
+    return res.data.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      setUser(null);
+    }
   };
 
   const value = {

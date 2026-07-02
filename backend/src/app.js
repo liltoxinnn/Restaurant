@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
+const helmet = require('helmet');
+const cookieParser = require('cookie-parser');
 
 const routes = require('./routes');
 const notFound = require('./middleware/notFound');
@@ -12,6 +14,8 @@ const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim());
 
+app.use(helmet());
+
 app.use(
   cors({
     origin: allowedOrigins,
@@ -19,8 +23,9 @@ app.use(
   })
 );
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+app.use(cookieParser());
 
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));

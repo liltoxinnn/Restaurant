@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const parseDateOrUndefined = require('../utils/parseDate');
 
 const expenseInclude = {
   creator: { select: { id: true, username: true } },
@@ -14,15 +15,19 @@ const getExpenses = asyncHandler(async (req, res) => {
 
   const where = {};
   if (category) where.category = category;
-  if (from || to) {
+  const gte = parseDateOrUndefined(from);
+  const lte = parseDateOrUndefined(to);
+  if (gte || lte) {
     where.expenseDate = {};
-    if (from) where.expenseDate.gte = new Date(from);
-    if (to) where.expenseDate.lte = new Date(to);
-  } else if (month) {
+    if (gte) where.expenseDate.gte = gte;
+    if (lte) where.expenseDate.lte = lte;
+  } else if (month && /^\d{4}-\d{2}$/.test(month)) {
     const [year, monthNum] = month.split('-').map(Number);
-    const start = new Date(year, monthNum - 1, 1);
-    const end = new Date(year, monthNum, 1);
-    where.expenseDate = { gte: start, lt: end };
+    if (monthNum >= 1 && monthNum <= 12) {
+      const start = new Date(year, monthNum - 1, 1);
+      const end = new Date(year, monthNum, 1);
+      where.expenseDate = { gte: start, lt: end };
+    }
   }
 
   const expenses = await prisma.expense.findMany({
@@ -53,8 +58,17 @@ const getExpenseById = asyncHandler(async (req, res) => {
 // @route   POST /api/expenses
 // @access  Private/Admin,Manager
 const createExpense = asyncHandler(async (req, res) => {
+  const { name, category, amount, paymentMethod, expenseDate, description } = req.body;
   const expense = await prisma.expense.create({
-    data: { ...req.body, createdBy: req.user.id },
+    data: {
+      name,
+      category,
+      amount,
+      paymentMethod,
+      expenseDate,
+      description,
+      createdBy: req.user.id,
+    },
     include: expenseInclude,
   });
 
@@ -70,6 +84,7 @@ const createExpense = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateExpense = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { name, category, amount, paymentMethod, expenseDate, description } = req.body;
 
   const existing = await prisma.expense.findUnique({ where: { id } });
   if (!existing) {
@@ -78,7 +93,7 @@ const updateExpense = asyncHandler(async (req, res) => {
 
   const expense = await prisma.expense.update({
     where: { id },
-    data: req.body,
+    data: { name, category, amount, paymentMethod, expenseDate, description },
     include: expenseInclude,
   });
 

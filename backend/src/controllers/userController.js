@@ -1,7 +1,7 @@
-const bcrypt = require('bcrypt');
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const { hashPassword } = require('../utils/password');
 
 const userSelect = {
   id: true,
@@ -44,16 +44,25 @@ const getUserById = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 const updateUser = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
-  const { password, ...rest } = req.body;
+  const { username, email, password, role } = req.body;
 
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('User not found', 404);
   }
 
-  const data = { ...rest };
+  // Prevent demoting the last remaining admin, which would lock the
+  // application out of any admin-only functionality.
+  if (existing.role === 'ADMIN' && role && role !== 'ADMIN') {
+    const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
+    if (adminCount <= 1) {
+      throw new AppError('Cannot change role: at least one admin account must remain', 400);
+    }
+  }
+
+  const data = { username, email, role };
   if (password) {
-    data.password = await bcrypt.hash(password, 10);
+    data.password = await hashPassword(password);
   }
 
   const user = await prisma.user.update({
@@ -74,6 +83,17 @@ const deleteUser = asyncHandler(async (req, res) => {
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('User not found', 404);
+  }
+
+  if (id === req.user.id) {
+    throw new AppError('You cannot delete your own account', 400);
+  }
+
+  if (existing.role === 'ADMIN') {
+    const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
+    if (adminCount <= 1) {
+      throw new AppError('Cannot delete the last remaining admin account', 400);
+    }
   }
 
   await prisma.user.delete({ where: { id } });

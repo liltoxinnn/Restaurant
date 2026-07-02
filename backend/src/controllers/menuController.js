@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const clampSearch = require('../utils/clampSearch');
 
 const menuItemInclude = {
   ingredients: {
@@ -14,7 +15,8 @@ const menuItemInclude = {
 // @route   GET /api/menu
 // @access  Private
 const getMenuItems = asyncHandler(async (req, res) => {
-  const { search, category, isAvailable } = req.query;
+  const { category, isAvailable } = req.query;
+  const search = clampSearch(req.query.search);
 
   const where = {};
   if (category) where.category = category;
@@ -52,8 +54,9 @@ const getMenuItemById = asyncHandler(async (req, res) => {
 // @route   POST /api/menu
 // @access  Private/Admin,Manager
 const createMenuItem = asyncHandler(async (req, res) => {
+  const { name, category, sellingPrice, costPrice, description, isAvailable } = req.body;
   const menuItem = await prisma.menuItem.create({
-    data: req.body,
+    data: { name, category, sellingPrice, costPrice, description, isAvailable },
     include: menuItemInclude,
   });
 
@@ -69,6 +72,7 @@ const createMenuItem = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateMenuItem = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { name, category, sellingPrice, costPrice, description, isAvailable } = req.body;
 
   const existing = await prisma.menuItem.findUnique({ where: { id } });
   if (!existing) {
@@ -77,7 +81,7 @@ const updateMenuItem = asyncHandler(async (req, res) => {
 
   const menuItem = await prisma.menuItem.update({
     where: { id },
-    data: req.body,
+    data: { name, category, sellingPrice, costPrice, description, isAvailable },
     include: menuItemInclude,
   });
 
@@ -142,6 +146,7 @@ const addIngredient = asyncHandler(async (req, res) => {
 const updateIngredient = asyncHandler(async (req, res) => {
   const menuItemId = Number(req.params.id);
   const ingredientId = Number(req.params.ingredientId);
+  const { stockItemId, quantityUsed, unit } = req.body;
 
   const existing = await prisma.menuItemIngredient.findFirst({
     where: { id: ingredientId, menuItemId },
@@ -150,8 +155,8 @@ const updateIngredient = asyncHandler(async (req, res) => {
     throw new AppError('Ingredient not found for this menu item', 404);
   }
 
-  if (req.body.stockItemId) {
-    const stockItem = await prisma.stockItem.findUnique({ where: { id: req.body.stockItemId } });
+  if (stockItemId) {
+    const stockItem = await prisma.stockItem.findUnique({ where: { id: stockItemId } });
     if (!stockItem) {
       throw new AppError('Stock item not found', 404);
     }
@@ -159,7 +164,7 @@ const updateIngredient = asyncHandler(async (req, res) => {
 
   const ingredient = await prisma.menuItemIngredient.update({
     where: { id: ingredientId },
-    data: req.body,
+    data: { stockItemId, quantityUsed, unit },
     include: { stockItem: { select: { id: true, name: true, unit: true } } },
   });
 

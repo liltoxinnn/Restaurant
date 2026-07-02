@@ -1,12 +1,14 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const clampSearch = require('../utils/clampSearch');
 
 // @desc    Get all stock items
 // @route   GET /api/stock
 // @access  Private/Admin,Manager,Cashier
 const getStockItems = asyncHandler(async (req, res) => {
-  const { search, category } = req.query;
+  const { category } = req.query;
+  const search = clampSearch(req.query.search);
 
   const where = {};
   if (category) where.category = category;
@@ -62,15 +64,18 @@ const getStockItemById = asyncHandler(async (req, res) => {
 // @route   POST /api/stock
 // @access  Private/Admin,Manager
 const createStockItem = asyncHandler(async (req, res) => {
-  if (req.body.supplierId) {
-    const supplier = await prisma.supplier.findUnique({ where: { id: req.body.supplierId } });
+  const { name, category, quantity, unit, buyingPrice, minimumQuantity, expirationDate, supplierId } =
+    req.body;
+
+  if (supplierId) {
+    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
     if (!supplier) {
       throw new AppError('Supplier not found', 404);
     }
   }
 
   const stockItem = await prisma.stockItem.create({
-    data: req.body,
+    data: { name, category, quantity, unit, buyingPrice, minimumQuantity, expirationDate, supplierId },
     include: { supplier: { select: { id: true, name: true } } },
   });
 
@@ -86,14 +91,16 @@ const createStockItem = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateStockItem = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { name, category, quantity, unit, buyingPrice, minimumQuantity, expirationDate, supplierId } =
+    req.body;
 
   const existing = await prisma.stockItem.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Stock item not found', 404);
   }
 
-  if (req.body.supplierId) {
-    const supplier = await prisma.supplier.findUnique({ where: { id: req.body.supplierId } });
+  if (supplierId) {
+    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
     if (!supplier) {
       throw new AppError('Supplier not found', 404);
     }
@@ -101,7 +108,7 @@ const updateStockItem = asyncHandler(async (req, res) => {
 
   const stockItem = await prisma.stockItem.update({
     where: { id },
-    data: req.body,
+    data: { name, category, quantity, unit, buyingPrice, minimumQuantity, expirationDate, supplierId },
     include: { supplier: { select: { id: true, name: true } } },
   });
 

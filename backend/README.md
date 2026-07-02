@@ -6,9 +6,10 @@ REST API built with Node.js, Express.js, PostgreSQL and Prisma ORM.
 
 - Node.js / Express.js
 - PostgreSQL + Prisma ORM
-- JWT authentication (`jsonwebtoken`)
+- JWT authentication (`jsonwebtoken`) delivered via an httpOnly cookie (`cookie-parser`)
 - `bcrypt` for password hashing
 - `zod` for request validation
+- `helmet` for security headers, `express-rate-limit` on auth endpoints
 - `cors`, `dotenv`, `morgan`
 
 ## Setup
@@ -97,7 +98,9 @@ backend/
 
 ## Authentication & Roles
 
-Every protected route requires an `Authorization: Bearer <token>` header. Tokens are issued at `/api/auth/login` and `/api/auth/register`.
+`/api/auth/login` and `/api/auth/register` issue a JWT and set it as an **httpOnly cookie** (`token`) — the browser sends it automatically on every subsequent request, and client-side JavaScript can never read it, which protects the session even if an XSS bug slips into the frontend. `/api/auth/logout` clears the cookie. For non-browser clients (Postman, scripts, mobile), `protect` also accepts a classic `Authorization: Bearer <token>` header as a fallback, but the API never returns the raw token in a JSON response body — only the cookie carries it.
+
+Public registration always creates an `EMPLOYEE` account; only an `ADMIN` can change a user's role afterwards via `PUT /api/users/:id`.
 
 | Role | Access |
 |---|---|

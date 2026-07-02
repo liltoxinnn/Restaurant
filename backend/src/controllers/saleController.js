@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const parseDateOrUndefined = require('../utils/parseDate');
 
 const saleInclude = {
   user: { select: { id: true, username: true, email: true } },
@@ -19,10 +20,12 @@ const getSales = asyncHandler(async (req, res) => {
 
   const where = {};
   if (paymentMethod) where.paymentMethod = paymentMethod;
-  if (from || to) {
+  const gte = parseDateOrUndefined(from);
+  const lte = parseDateOrUndefined(to);
+  if (gte || lte) {
     where.saleDate = {};
-    if (from) where.saleDate.gte = new Date(from);
-    if (to) where.saleDate.lte = new Date(to);
+    if (gte) where.saleDate.gte = gte;
+    if (lte) where.saleDate.lte = lte;
   }
 
   const sales = await prisma.sale.findMany({

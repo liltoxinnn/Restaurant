@@ -9,8 +9,8 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [email, setEmail] = useState('admin@restaurant.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -52,6 +52,7 @@ export default function Login() {
               id="email"
               type="email"
               required
+              autoComplete="username"
               className="input"
               placeholder="you@restaurant.com"
               value={email}
@@ -67,6 +68,7 @@ export default function Login() {
               id="password"
               type="password"
               required
+              autoComplete="current-password"
               className="input"
               placeholder="••••••••"
               value={password}
@@ -78,13 +80,6 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-
-        <div className="mt-6 rounded-lg bg-gray-50 p-4 text-xs text-gray-500">
-          <p className="mb-1 font-semibold text-gray-600">Demo accounts</p>
-          <p>Admin: admin@restaurant.com / admin123</p>
-          <p>Manager: manager@restaurant.com / manager123</p>
-          <p>Cashier: cashier@restaurant.com / cashier123</p>
-        </div>
       </div>
     </div>
   );

@@ -44,6 +44,15 @@ const lastNDays = (count) => {
   return days;
 };
 
+// Safely parses a query-string integer, falling back to a default and
+// clamping to `max` so malformed input (e.g. "abc", "-5") can't produce
+// NaN-driven crashes or unbounded queries.
+const parsePositiveInt = (value, fallback, max) => {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return fallback;
+  return Math.min(Math.floor(num), max);
+};
+
 // @desc    Aggregated dashboard analytics
 // @route   GET /api/reports/dashboard
 // @access  Private/Admin,Manager
@@ -155,7 +164,7 @@ const getDashboard = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/sales/daily
 // @access  Private/Admin,Manager
 const getDailySalesReport = asyncHandler(async (req, res) => {
-  const days = Number(req.query.days) || 30;
+  const days = parsePositiveInt(req.query.days, 30, 365);
   const range = lastNDays(days);
 
   const sales = await prisma.sale.findMany({
@@ -179,7 +188,7 @@ const getDailySalesReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/sales/monthly
 // @access  Private/Admin,Manager
 const getMonthlySalesReport = asyncHandler(async (req, res) => {
-  const monthsCount = Number(req.query.months) || 12;
+  const monthsCount = parsePositiveInt(req.query.months, 12, 60);
   const months = lastNMonths(monthsCount);
 
   const sales = await prisma.sale.findMany({
@@ -203,7 +212,7 @@ const getMonthlySalesReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/expenses/monthly
 // @access  Private/Admin,Manager
 const getMonthlyExpensesReport = asyncHandler(async (req, res) => {
-  const monthsCount = Number(req.query.months) || 12;
+  const monthsCount = parsePositiveInt(req.query.months, 12, 60);
   const months = lastNMonths(monthsCount);
 
   const expenses = await prisma.expense.findMany({
@@ -227,7 +236,7 @@ const getMonthlyExpensesReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/profit/monthly
 // @access  Private/Admin,Manager
 const getMonthlyProfitReport = asyncHandler(async (req, res) => {
-  const monthsCount = Number(req.query.months) || 12;
+  const monthsCount = parsePositiveInt(req.query.months, 12, 60);
   const months = lastNMonths(monthsCount);
 
   const [sales, expenses] = await Promise.all([
@@ -323,7 +332,7 @@ const getEmployeePaymentsReport = asyncHandler(async (req, res) => {
 // @route   GET /api/reports/top-selling-items
 // @access  Private/Admin,Manager
 const getTopSellingItemsReport = asyncHandler(async (req, res) => {
-  const limit = Number(req.query.limit) || 10;
+  const limit = parsePositiveInt(req.query.limit, 10, 100);
 
   const grouped = await prisma.saleItem.groupBy({
     by: ['menuItemId'],

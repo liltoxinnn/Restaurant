@@ -1,12 +1,14 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const clampSearch = require('../utils/clampSearch');
 
 // @desc    Get all employees
 // @route   GET /api/employees
 // @access  Private/Admin,Manager
 const getEmployees = asyncHandler(async (req, res) => {
-  const { search, status } = req.query;
+  const { status } = req.query;
+  const search = clampSearch(req.query.search);
 
   const where = {};
   if (status) where.status = status;
@@ -48,7 +50,10 @@ const getEmployeeById = asyncHandler(async (req, res) => {
 // @route   POST /api/employees
 // @access  Private/Admin,Manager
 const createEmployee = asyncHandler(async (req, res) => {
-  const employee = await prisma.employee.create({ data: req.body });
+  const { fullName, phone, address, position, salary, startDate, status } = req.body;
+  const employee = await prisma.employee.create({
+    data: { fullName, phone, address, position, salary, startDate, status },
+  });
 
   return success(res, {
     message: 'Employee created successfully',
@@ -62,13 +67,17 @@ const createEmployee = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateEmployee = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { fullName, phone, address, position, salary, startDate, status } = req.body;
 
   const existing = await prisma.employee.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Employee not found', 404);
   }
 
-  const employee = await prisma.employee.update({ where: { id }, data: req.body });
+  const employee = await prisma.employee.update({
+    where: { id },
+    data: { fullName, phone, address, position, salary, startDate, status },
+  });
 
   return success(res, { message: 'Employee updated successfully', data: employee });
 });

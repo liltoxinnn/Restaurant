@@ -47,7 +47,7 @@ const getEmployeePaymentById = asyncHandler(async (req, res) => {
 // @route   POST /api/employee-payments
 // @access  Private/Admin,Manager
 const createEmployeePayment = asyncHandler(async (req, res) => {
-  const { employeeId } = req.body;
+  const { employeeId, amount, paymentType, paymentDate, month, notes } = req.body;
 
   const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
   if (!employee) {
@@ -55,7 +55,7 @@ const createEmployeePayment = asyncHandler(async (req, res) => {
   }
 
   const payment = await prisma.employeePayment.create({
-    data: req.body,
+    data: { employeeId, amount, paymentType, paymentDate, month, notes },
     include: { employee: { select: { id: true, fullName: true, position: true } } },
   });
 
@@ -71,14 +71,15 @@ const createEmployeePayment = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateEmployeePayment = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { employeeId, amount, paymentType, paymentDate, month, notes } = req.body;
 
   const existing = await prisma.employeePayment.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Employee payment not found', 404);
   }
 
-  if (req.body.employeeId) {
-    const employee = await prisma.employee.findUnique({ where: { id: req.body.employeeId } });
+  if (employeeId) {
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
     if (!employee) {
       throw new AppError('Employee not found', 404);
     }
@@ -86,7 +87,7 @@ const updateEmployeePayment = asyncHandler(async (req, res) => {
 
   const payment = await prisma.employeePayment.update({
     where: { id },
-    data: req.body,
+    data: { employeeId, amount, paymentType, paymentDate, month, notes },
     include: { employee: { select: { id: true, fullName: true, position: true } } },
   });
 

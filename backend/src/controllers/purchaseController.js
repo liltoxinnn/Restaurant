@@ -125,14 +125,15 @@ const createPurchase = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updatePurchase = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { supplierId, paymentStatus, purchaseDate } = req.body;
 
   const existing = await prisma.purchase.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Purchase not found', 404);
   }
 
-  if (req.body.supplierId) {
-    const supplier = await prisma.supplier.findUnique({ where: { id: req.body.supplierId } });
+  if (supplierId) {
+    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
     if (!supplier) {
       throw new AppError('Supplier not found', 404);
     }
@@ -140,7 +141,7 @@ const updatePurchase = asyncHandler(async (req, res) => {
 
   const purchase = await prisma.purchase.update({
     where: { id },
-    data: req.body,
+    data: { supplierId, paymentStatus, purchaseDate },
     include: purchaseInclude,
   });
 

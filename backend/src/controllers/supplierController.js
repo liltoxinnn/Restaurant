@@ -1,12 +1,13 @@
 const prisma = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const { success, AppError } = require('../utils/apiResponse');
+const clampSearch = require('../utils/clampSearch');
 
 // @desc    Get all suppliers
 // @route   GET /api/suppliers
 // @access  Private/Admin,Manager
 const getSuppliers = asyncHandler(async (req, res) => {
-  const { search } = req.query;
+  const search = clampSearch(req.query.search);
 
   const where = {};
   if (search) {
@@ -50,7 +51,8 @@ const getSupplierById = asyncHandler(async (req, res) => {
 // @route   POST /api/suppliers
 // @access  Private/Admin,Manager
 const createSupplier = asyncHandler(async (req, res) => {
-  const supplier = await prisma.supplier.create({ data: req.body });
+  const { name, phone, email, address, notes } = req.body;
+  const supplier = await prisma.supplier.create({ data: { name, phone, email, address, notes } });
 
   return success(res, {
     message: 'Supplier created successfully',
@@ -64,13 +66,17 @@ const createSupplier = asyncHandler(async (req, res) => {
 // @access  Private/Admin,Manager
 const updateSupplier = asyncHandler(async (req, res) => {
   const id = Number(req.params.id);
+  const { name, phone, email, address, notes } = req.body;
 
   const existing = await prisma.supplier.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Supplier not found', 404);
   }
 
-  const supplier = await prisma.supplier.update({ where: { id }, data: req.body });
+  const supplier = await prisma.supplier.update({
+    where: { id },
+    data: { name, phone, email, address, notes },
+  });
 
   return success(res, { message: 'Supplier updated successfully', data: supplier });
 });
