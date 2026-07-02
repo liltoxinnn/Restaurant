@@ -1,5 +1,15 @@
 const { ZodError } = require('zod');
 const { Prisma } = require('@prisma/client');
+const { AppError } = require('../utils/apiResponse');
+
+// Detects a database foreign-key/RESTRICT violation regardless of which
+// Prisma error class it surfaces as (Postgres reports RESTRICT violations
+// as SQLSTATE 23001, which Prisma does not map to a known P-code, so it
+// arrives as a generic/unknown error whose raw message must never be sent
+// to the client as-is).
+const isForeignKeyRestrictError = (err) =>
+  typeof err.message === 'string' &&
+  (err.message.includes('foreign key constraint') || err.message.toLowerCase().includes('violates restrict'));
 
 // Global error handling middleware. Every thrown/forwarded error in the
 // application ends up here and is converted into the standard
@@ -36,7 +46,7 @@ const errorHandler = (err, req, res, next) => {
     if (err.code === 'P2003') {
       return res.status(409).json({
         success: false,
-        message: 'Operation failed because of a related record constraint',
+        message: 'This action was blocked because the record is still referenced by other data.',
         error: err.meta || null,
       });
     }
@@ -44,6 +54,21 @@ const errorHandler = (err, req, res, next) => {
       success: false,
       message: 'Database request error',
       error: err.meta || null,
+    });
+  }
+
+  // Foreign-key RESTRICT violations that Prisma doesn't recognize as a known
+  // error code (e.g. deleting a stock item still used by a menu recipe)
+  // surface as PrismaClientUnknownRequestError. Give a clean message instead
+  // of the raw query-engine dump.
+  if (
+    (err instanceof Prisma.PrismaClientUnknownRequestError || err instanceof Prisma.PrismaClientRustPanicError) &&
+    isForeignKeyRestrictError(err)
+  ) {
+    return res.status(409).json({
+      success: false,
+      message: 'This action was blocked because the record is still referenced by other data. Remove those references first.',
+      error: null,
     });
   }
 
@@ -55,13 +80,21 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
-  const statusCode = err.statusCode || 500;
-  return res.status(statusCode).json({
+  // Errors we deliberately threw ourselves carry a safe, human-readable
+  // message. Anything else is unexpected and must never leak internal
+  // details (file paths, queries, stack traces) to the client.
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      success: false,
+      message: err.message,
+      error: err.error || null,
+    });
+  }
+
+  return res.status(500).json({
     success: false,
-    message: err.message || 'Internal server error',
-    error:
-      err.error ||
-      (process.env.NODE_ENV === 'development' ? err.stack : undefined),
+    message: 'Internal server error. Please try again.',
+    error: process.env.NODE_ENV === 'development' ? err.message : null,
   });
 };
 

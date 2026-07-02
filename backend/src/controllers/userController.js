@@ -96,6 +96,14 @@ const deleteUser = asyncHandler(async (req, res) => {
     }
   }
 
+  const saleCount = await prisma.sale.count({ where: { userId: id } });
+  if (saleCount > 0) {
+    throw new AppError(
+      `Cannot delete "${existing.username}" because they have ${saleCount} recorded sale(s). Deactivate the account instead of deleting it.`,
+      409
+    );
+  }
+
   await prisma.user.delete({ where: { id } });
 
   return success(res, { message: 'User deleted successfully', data: null });

@@ -92,6 +92,14 @@ const deleteSupplier = asyncHandler(async (req, res) => {
     throw new AppError('Supplier not found', 404);
   }
 
+  const purchaseCount = await prisma.purchase.count({ where: { supplierId: id } });
+  if (purchaseCount > 0) {
+    throw new AppError(
+      `Cannot delete "${existing.name}" because it has ${purchaseCount} purchase record(s). Delete those purchases first.`,
+      409
+    );
+  }
+
   await prisma.supplier.delete({ where: { id } });
 
   return success(res, { message: 'Supplier deleted successfully', data: null });
