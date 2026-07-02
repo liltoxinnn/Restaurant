@@ -1,0 +1,68 @@
+{
+  "name": "le-coin-des-pecheurs-desktop",
+  "version": "1.0.0",
+  "description": "Desktop app for Le Coin des Pêcheurs restaurant management system",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "postinstall": "electron-builder install-app-deps",
+    "prisma:generate": "prisma generate --schema=server/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=server/prisma/schema.prisma",
+    "build:template-db": "node scripts/build-template-db.js",
+    "build:frontend": "node scripts/build-frontend.js",
+    "prebuild": "npm run build:frontend && npm run prisma:generate && npm run build:template-db",
+    "start": "npm run prebuild && electron .",
+    "dist": "npm run prebuild && electron-builder"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3",
+    "prisma": "^5.20.0"
+  },
+  "build": {
+    "appId": "com.lecoindespecheurs.desktop",
+    "productName": "Le Coin des Pêcheurs",
+    "files": [
+      "**/*",
+      "!scripts/**",
+      "!server/prisma/*.db",
+      "!server/prisma/migrations/**",
+      "!resources/**"
+    ],
+    "asarUnpack": [
+      "**/node_modules/.prisma/**",
+      "**/node_modules/@prisma/engines/**",
+      "**/node_modules/@prisma/client/**"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/template.db",
+        "to": "template.db"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../frontend/public/logo.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "../frontend/public/logo.png"
+    }
+  }
+}
