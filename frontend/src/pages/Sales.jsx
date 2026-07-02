@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import * as salesApi from '../api/sales';
 import * as menuApi from '../api/menu';
 import Alert from '../components/Alert';
+import Modal from '../components/Modal';
+import Receipt from '../components/Receipt';
 import getErrorMessage from '../utils/getErrorMessage';
 import { formatCurrency } from '../utils/format';
 
@@ -111,6 +113,8 @@ export default function Sales() {
   const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [receiptOrder, setReceiptOrder] = useState(null);
+
   const fetchMenuItems = async () => {
     setMenuLoading(true);
     try {
@@ -190,12 +194,13 @@ export default function Sales() {
     setError('');
     setSaving(true);
     try {
-      await salesApi.createSale({
+      const res = await salesApi.createSale({
         discount: Number(discount) || 0,
         paymentMethod,
         items: cart.map((line) => ({ menuItemId: line.menuItem.id, quantity: line.quantity })),
       });
       setSuccess('Order placed successfully — it now appears in Orders.');
+      setReceiptOrder(res.data);
       clearOrder();
     } catch (err) {
       setError(getErrorMessage(err, 'Failed to place order'));
@@ -203,6 +208,12 @@ export default function Sales() {
       setSaving(false);
     }
   };
+
+  useEffect(() => {
+    if (!receiptOrder) return undefined;
+    const timeout = setTimeout(() => window.print(), 300);
+    return () => clearTimeout(timeout);
+  }, [receiptOrder]);
 
   return (
     <div className="space-y-4">
@@ -361,6 +372,18 @@ export default function Sales() {
           </div>
         </div>
       </div>
+
+      <Modal open={Boolean(receiptOrder)} onClose={() => setReceiptOrder(null)} title="Order Placed" size="sm">
+        <Receipt sale={receiptOrder} />
+        <div className="no-print mt-4 flex justify-end gap-3">
+          <button type="button" className="btn-secondary" onClick={() => setReceiptOrder(null)}>
+            Close
+          </button>
+          <button type="button" className="btn-primary" onClick={() => window.print()}>
+            Print Receipt
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
