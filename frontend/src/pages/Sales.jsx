@@ -1,121 +1,245 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import * as salesApi from '../api/sales';
 import * as menuApi from '../api/menu';
 import DataTable from '../components/DataTable';
-import Modal from '../components/Modal';
 import Alert from '../components/Alert';
+import { useAuth } from '../context/AuthContext';
 import getErrorMessage from '../utils/getErrorMessage';
 import { formatCurrency, formatDateTime } from '../utils/format';
 
-const emptyLine = { menuItemId: '', quantity: 1 };
+const TILE_COLORS = [
+  { bg: 'bg-orange-100', text: 'text-orange-700' },
+  { bg: 'bg-blue-100', text: 'text-blue-700' },
+  { bg: 'bg-green-100', text: 'text-green-700' },
+  { bg: 'bg-purple-100', text: 'text-purple-700' },
+  { bg: 'bg-pink-100', text: 'text-pink-700' },
+  { bg: 'bg-yellow-100', text: 'text-yellow-700' },
+  { bg: 'bg-teal-100', text: 'text-teal-700' },
+];
+
+const colorForCategory = (category = '') => {
+  let hash = 0;
+  for (let i = 0; i < category.length; i += 1) hash = (hash * 31 + category.charCodeAt(i)) >>> 0;
+  return TILE_COLORS[hash % TILE_COLORS.length];
+};
+
+const initialsFor = (name = '') =>
+  name
+    .split(' ')
+    .map((word) => word.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
+function ProductCard({ item, quantityInCart, onAdd }) {
+  const color = colorForCategory(item.category);
+  return (
+    <button
+      type="button"
+      onClick={() => onAdd(item)}
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+    >
+      {quantityInCart > 0 && (
+        <span className="absolute right-2 top-2 z-10 flex h-6 min-w-6 items-center justify-center rounded-full bg-primary-600 px-1.5 text-xs font-semibold text-white">
+          {quantityInCart}
+        </span>
+      )}
+      <div className={`flex h-24 items-center justify-center ${color.bg}`}>
+        <span className={`text-2xl font-bold ${color.text}`}>{initialsFor(item.name)}</span>
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-3">
+        <p className="truncate text-sm font-medium text-gray-800">{item.name}</p>
+        <p className="text-xs text-gray-400">{item.category}</p>
+        <p className="mt-auto text-sm font-semibold text-primary-700">{formatCurrency(item.sellingPrice)}</p>
+      </div>
+    </button>
+  );
+}
+
+function CartLine({ line, onIncrement, onDecrement, onRemove }) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-gray-800">{line.menuItem.name}</p>
+        <p className="text-xs text-gray-400">{formatCurrency(line.menuItem.sellingPrice)} each</p>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onDecrement(line.menuItem.id)}
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100"
+          aria-label="Decrease quantity"
+        >
+          &minus;
+        </button>
+        <span className="w-5 text-center text-sm font-medium text-gray-800">{line.quantity}</span>
+        <button
+          type="button"
+          onClick={() => onIncrement(line.menuItem.id)}
+          className="flex h-6 w-6 items-center justify-center rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100"
+          aria-label="Increase quantity"
+        >
+          +
+        </button>
+      </div>
+      <p className="w-20 shrink-0 text-right text-sm font-semibold text-gray-800">
+        {formatCurrency(line.menuItem.sellingPrice * line.quantity)}
+      </p>
+      <button
+        type="button"
+        onClick={() => onRemove(line.menuItem.id)}
+        className="shrink-0 text-gray-400 hover:text-red-600"
+        aria-label="Remove item"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
 
 export default function Sales() {
-  const [sales, setSales] = useState([]);
-  const [menuItems, setMenuItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const { hasRole } = useAuth();
+  const canDeleteSales = hasRole('ADMIN', 'MANAGER');
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [lines, setLines] = useState([{ ...emptyLine }]);
+  const [view, setView] = useState('pos');
+
+  const [menuItems, setMenuItems] = useState([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All');
+
+  const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
-  const [formError, setFormError] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const [sales, setSales] = useState([]);
+  const [salesLoading, setSalesLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+
+  const fetchMenuItems = async () => {
+    setMenuLoading(true);
+    try {
+      const res = await menuApi.getMenuItems({ isAvailable: true });
+      setMenuItems(res.data);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to load menu items'));
+    } finally {
+      setMenuLoading(false);
+    }
+  };
+
   const fetchSales = async () => {
-    setLoading(true);
-    setError('');
+    setSalesLoading(true);
+    setHistoryError('');
     try {
       const res = await salesApi.getSales();
       setSales(res.data);
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to load sales'));
+      setHistoryError(getErrorMessage(err, 'Failed to load sales'));
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchMenuItems = async () => {
-    try {
-      const res = await menuApi.getMenuItems({ isAvailable: true });
-      setMenuItems(res.data);
-    } catch {
-      // menu list only used to populate the sale form dropdown
+      setSalesLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchSales();
     fetchMenuItems();
+    fetchSales();
   }, []);
 
-  const openAddModal = () => {
-    setLines([{ ...emptyLine }]);
+  const categories = useMemo(
+    () => ['All', ...new Set(menuItems.map((item) => item.category))],
+    [menuItems]
+  );
+
+  const visibleItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const matchesCategory = category === 'All' || item.category === category;
+      const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [menuItems, category, search]);
+
+  const addToCart = (item) => {
+    setSuccess('');
+    setCart((prev) => {
+      const existing = prev.find((line) => line.menuItem.id === item.id);
+      if (existing) {
+        return prev.map((line) =>
+          line.menuItem.id === item.id ? { ...line, quantity: line.quantity + 1 } : line
+        );
+      }
+      return [...prev, { menuItem: item, quantity: 1 }];
+    });
+  };
+
+  const incrementLine = (menuItemId) => {
+    setCart((prev) =>
+      prev.map((line) => (line.menuItem.id === menuItemId ? { ...line, quantity: line.quantity + 1 } : line))
+    );
+  };
+
+  const decrementLine = (menuItemId) => {
+    setCart((prev) =>
+      prev
+        .map((line) => (line.menuItem.id === menuItemId ? { ...line, quantity: line.quantity - 1 } : line))
+        .filter((line) => line.quantity > 0)
+    );
+  };
+
+  const removeLine = (menuItemId) => {
+    setCart((prev) => prev.filter((line) => line.menuItem.id !== menuItemId));
+  };
+
+  const clearOrder = () => {
+    setCart([]);
     setDiscount(0);
     setPaymentMethod('CASH');
-    setFormError('');
-    setModalOpen(true);
+    setError('');
   };
 
-  const updateLine = (index, field, value) => {
-    setLines((prev) => prev.map((line, i) => (i === index ? { ...line, [field]: value } : line)));
-  };
-
-  const addLine = () => setLines((prev) => [...prev, { ...emptyLine }]);
-  const removeLine = (index) => setLines((prev) => prev.filter((_, i) => i !== index));
-
-  const getMenuItem = (id) => menuItems.find((m) => String(m.id) === String(id));
-
-  const subtotal = lines.reduce((sum, line) => {
-    const menuItem = getMenuItem(line.menuItemId);
-    if (!menuItem) return sum;
-    return sum + menuItem.sellingPrice * (Number(line.quantity) || 0);
-  }, 0);
-
+  const subtotal = cart.reduce((sum, line) => sum + line.menuItem.sellingPrice * line.quantity, 0);
   const total = Math.max(subtotal - (Number(discount) || 0), 0);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-
-    if (lines.some((line) => !line.menuItemId || Number(line.quantity) <= 0)) {
-      setFormError('Please select a menu item and valid quantity for every line');
+  const handlePlaceOrder = async () => {
+    if (cart.length === 0) {
+      setError('Add at least one item to the order first');
       return;
     }
 
+    setError('');
     setSaving(true);
     try {
       await salesApi.createSale({
         discount: Number(discount) || 0,
         paymentMethod,
-        items: lines.map((line) => ({
-          menuItemId: Number(line.menuItemId),
-          quantity: Number(line.quantity),
-        })),
+        items: cart.map((line) => ({ menuItemId: line.menuItem.id, quantity: line.quantity })),
       });
-      setSuccess('Sale created successfully and stock updated');
-      setModalOpen(false);
+      setSuccess('Order placed successfully and stock updated');
+      clearOrder();
       fetchSales();
     } catch (err) {
-      setFormError(getErrorMessage(err, 'Failed to create sale'));
+      setError(getErrorMessage(err, 'Failed to place order'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleDelete = async (sale) => {
+  const handleDeleteSale = async (sale) => {
     if (!window.confirm(`Delete sale #${sale.id}? Consumed stock will be restored.`)) return;
     try {
       await salesApi.deleteSale(sale.id);
-      setSuccess('Sale deleted and stock restored');
       fetchSales();
     } catch (err) {
-      setError(getErrorMessage(err, 'Failed to delete sale'));
+      setHistoryError(getErrorMessage(err, 'Failed to delete sale'));
     }
   };
 
-  const columns = [
+  const historyColumns = [
     { key: 'id', header: 'Sale #' },
     { key: 'saleDate', header: 'Date', render: (row) => formatDateTime(row.saleDate) },
     { key: 'user', header: 'Cashier', render: (row) => row.user?.username || '-' },
@@ -123,129 +247,206 @@ export default function Sales() {
     { key: 'discount', header: 'Discount', render: (row) => formatCurrency(row.discount) },
     { key: 'paymentMethod', header: 'Payment' },
     { key: 'totalAmount', header: 'Total', render: (row) => formatCurrency(row.totalAmount) },
-    {
-      key: 'actions',
-      header: 'Actions',
-      render: (row) => (
-        <button type="button" className="text-sm font-medium text-red-600 hover:underline" onClick={() => handleDelete(row)}>
-          Delete
-        </button>
-      ),
-    },
+    ...(canDeleteSales
+      ? [
+          {
+            key: 'actions',
+            header: 'Actions',
+            render: (row) => (
+              <button
+                type="button"
+                className="text-sm font-medium text-red-600 hover:underline"
+                onClick={() => handleDeleteSale(row)}
+              >
+                Delete
+              </button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Sales</h2>
-          <p className="text-sm text-gray-500">Record and review customer orders</p>
+          <p className="text-sm text-gray-500">Place new orders or review past sales</p>
         </div>
-        <button type="button" className="btn-primary" onClick={openAddModal}>
-          + New Sale
-        </button>
+        <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+          <button
+            type="button"
+            onClick={() => setView('pos')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              view === 'pos' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            New Sale
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('history')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+              view === 'history' ? 'bg-primary-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+            }`}
+          >
+            Sale History
+          </button>
+        </div>
       </div>
 
-      <Alert type="error" message={error} onClose={() => setError('')} />
-      <Alert type="success" message={success} onClose={() => setSuccess('')} />
+      {view === 'history' ? (
+        <div className="space-y-4">
+          <Alert type="error" message={historyError} onClose={() => setHistoryError('')} />
+          <DataTable columns={historyColumns} data={sales} loading={salesLoading} emptyMessage="No sales recorded yet." />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          {/* Product selection */}
+          <div className="flex-1 space-y-4">
+            <div className="card space-y-3">
+              <div className="relative">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path strokeLinecap="round" d="M21 21l-4.3-4.3" />
+                </svg>
+                <input
+                  type="text"
+                  className="input pl-9"
+                  placeholder="Search all products..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-      <DataTable columns={columns} data={sales} loading={loading} emptyMessage="No sales recorded yet." />
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCategory(cat)}
+                    className={`rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                      category === cat
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Sale" size="lg">
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Alert type="error" message={formError} onClose={() => setFormError('')} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+              {menuLoading ? (
+                <p className="col-span-full py-10 text-center text-gray-400">Loading menu...</p>
+              ) : visibleItems.length === 0 ? (
+                <p className="col-span-full py-10 text-center text-gray-400">No menu items match your search.</p>
+              ) : (
+                visibleItems.map((item) => {
+                  const line = cart.find((l) => l.menuItem.id === item.id);
+                  return (
+                    <ProductCard
+                      key={item.id}
+                      item={item}
+                      quantityInCart={line?.quantity || 0}
+                      onAdd={addToCart}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </div>
 
-          <div>
+          {/* Current order / cart */}
+          <div className="card flex w-full flex-col lg:sticky lg:top-20 lg:w-96 lg:shrink-0">
             <div className="mb-2 flex items-center justify-between">
-              <label className="label mb-0">Order Items</label>
-              <button type="button" className="text-sm font-medium text-primary-600 hover:underline" onClick={addLine}>
-                + Add Item
+              <h3 className="text-base font-semibold text-gray-800">Current Order</h3>
+              {cart.length > 0 && (
+                <button type="button" onClick={clearOrder} className="text-xs font-medium text-gray-400 hover:text-red-600">
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <Alert type="error" message={error} onClose={() => setError('')} />
+            <Alert type="success" message={success} onClose={() => setSuccess('')} />
+
+            <div className="max-h-[45vh] min-h-[3rem] divide-y divide-gray-100 overflow-y-auto">
+              {cart.length === 0 ? (
+                <p className="py-8 text-center text-sm text-gray-400">Tap a product to add it to the order.</p>
+              ) : (
+                cart.map((line) => (
+                  <CartLine
+                    key={line.menuItem.id}
+                    line={line}
+                    onIncrement={incrementLine}
+                    onDecrement={decrementLine}
+                    onRemove={removeLine}
+                  />
+                ))
+              )}
+            </div>
+
+            <div className="mt-3 space-y-3 border-t border-gray-200 pt-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Discount</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input"
+                    value={discount}
+                    onChange={(e) => setDiscount(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">Payment</label>
+                  <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
+                    <option value="CASH">Cash</option>
+                    <option value="CARD">Card</option>
+                    <option value="MOBILE">Mobile</option>
+                    <option value="ONLINE">Online</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between text-gray-500">
+                  <span>Subtotal</span>
+                  <span>{formatCurrency(subtotal)}</span>
+                </div>
+                {Number(discount) > 0 && (
+                  <div className="flex justify-between text-gray-500">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-lg font-semibold text-gray-900">
+                  <span>Total</span>
+                  <span>{formatCurrency(total)}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handlePlaceOrder}
+                disabled={saving || cart.length === 0}
+                className="btn-primary w-full py-3 text-base"
+              >
+                {saving ? 'Placing order...' : 'Place Order'}
               </button>
             </div>
-
-            <div className="space-y-3">
-              {lines.map((line, index) => {
-                const menuItem = getMenuItem(line.menuItemId);
-                const lineTotal = menuItem ? menuItem.sellingPrice * (Number(line.quantity) || 0) : 0;
-                return (
-                  <div key={index} className="grid grid-cols-12 items-center gap-2 rounded-lg border border-gray-200 p-3">
-                    <select
-                      className="input col-span-5"
-                      value={line.menuItemId}
-                      onChange={(e) => updateLine(index, 'menuItemId', e.target.value)}
-                    >
-                      <option value="">Select menu item</option>
-                      {menuItems.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} - {formatCurrency(m.sellingPrice)}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      min="1"
-                      step="1"
-                      placeholder="Qty"
-                      className="input col-span-2"
-                      value={line.quantity}
-                      onChange={(e) => updateLine(index, 'quantity', e.target.value)}
-                    />
-                    <span className="col-span-3 text-right text-sm font-medium text-gray-700">
-                      {formatCurrency(lineTotal)}
-                    </span>
-                    <button
-                      type="button"
-                      className="col-span-2 text-red-500 hover:text-red-700"
-                      onClick={() => removeLine(index)}
-                      disabled={lines.length === 1}
-                      aria-label="Remove item"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Discount</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                className="input"
-                value={discount}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            </div>
-            <div>
-              <label className="label">Payment Method</label>
-              <select className="input" value={paymentMethod} onChange={(e) => setPaymentMethod(e.target.value)}>
-                <option value="CASH">Cash</option>
-                <option value="CARD">Card</option>
-                <option value="MOBILE">Mobile</option>
-                <option value="ONLINE">Online</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1 border-t border-gray-200 pt-4 text-right">
-            <p className="text-sm text-gray-500">Subtotal: {formatCurrency(subtotal)}</p>
-            <p className="text-lg font-semibold text-gray-800">Total: {formatCurrency(total)}</p>
-          </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" className="btn-secondary" onClick={() => setModalOpen(false)}>
-              Cancel
-            </button>
-            <button type="submit" disabled={saving} className="btn-primary">
-              {saving ? 'Saving...' : 'Complete Sale'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+        </div>
+      )}
     </div>
   );
 }
