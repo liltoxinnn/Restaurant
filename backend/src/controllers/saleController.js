@@ -12,6 +12,19 @@ const saleInclude = {
   },
 };
 
+// @desc    Preview the order number the next created sale will likely get
+// @route   GET /api/sales/next-order-number
+// @access  Private
+const getNextOrderNumber = asyncHandler(async (req, res) => {
+  const { _max } = await prisma.sale.aggregate({ _max: { id: true } });
+  const nextOrderNumber = (_max.id || 0) + 1;
+
+  return success(res, {
+    message: 'Next order number fetched successfully',
+    data: { nextOrderNumber },
+  });
+});
+
 // @desc    Get all sales
 // @route   GET /api/sales
 // @access  Private
@@ -216,4 +229,11 @@ const deleteSale = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { getSales, getSaleById, createSale, updatePaymentStatus, deleteSale };
+module.exports = {
+  getSales,
+  getSaleById,
+  getNextOrderNumber,
+  createSale,
+  updatePaymentStatus,
+  deleteSale,
+};
