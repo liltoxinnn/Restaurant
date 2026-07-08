@@ -208,6 +208,42 @@ const getMonthlySalesReport = asyncHandler(async (req, res) => {
   return success(res, { message: 'Monthly sales report fetched successfully', data: report });
 });
 
+// @desc    Daily income, expenses & profit report (last 30 days)
+// @route   GET /api/reports/profit/daily
+// @access  Private/Admin,Manager
+const getDailyProfitReport = asyncHandler(async (req, res) => {
+  const days = parsePositiveInt(req.query.days, 30, 365);
+  const range = lastNDays(days);
+
+  const [sales, expenses] = await Promise.all([
+    prisma.sale.findMany({
+      where: { saleDate: { gte: range[0].start, lte: range[range.length - 1].end } },
+      select: { totalAmount: true, saleDate: true },
+    }),
+    prisma.expense.findMany({
+      where: { expenseDate: { gte: range[0].start, lte: range[range.length - 1].end } },
+      select: { amount: true, expenseDate: true },
+    }),
+  ]);
+
+  const report = range.map(({ start, end, label }) => {
+    const income = sales
+      .filter((s) => s.saleDate >= start && s.saleDate <= end)
+      .reduce((sum, s) => sum + s.totalAmount, 0);
+    const expense = expenses
+      .filter((e) => e.expenseDate >= start && e.expenseDate <= end)
+      .reduce((sum, e) => sum + e.amount, 0);
+    return {
+      date: label,
+      income: Number(income.toFixed(2)),
+      expenses: Number(expense.toFixed(2)),
+      profit: Number((income - expense).toFixed(2)),
+    };
+  });
+
+  return success(res, { message: 'Daily profit report fetched successfully', data: report });
+});
+
 // @desc    Monthly expenses report (last 12 months)
 // @route   GET /api/reports/expenses/monthly
 // @access  Private/Admin,Manager
@@ -361,6 +397,7 @@ const getTopSellingItemsReport = asyncHandler(async (req, res) => {
 module.exports = {
   getDashboard,
   getDailySalesReport,
+  getDailyProfitReport,
   getMonthlySalesReport,
   getMonthlyExpensesReport,
   getMonthlyProfitReport,

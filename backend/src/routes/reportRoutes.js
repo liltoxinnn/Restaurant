@@ -2,6 +2,7 @@ const express = require('express');
 const {
   getDashboard,
   getDailySalesReport,
+  getDailyProfitReport,
   getMonthlySalesReport,
   getMonthlyExpensesReport,
   getMonthlyProfitReport,
@@ -19,6 +20,7 @@ router.get('/dashboard', getDashboard);
 router.get('/sales/daily', getDailySalesReport);
 router.get('/sales/monthly', getMonthlySalesReport);
 router.get('/expenses/monthly', getMonthlyExpensesReport);
+router.get('/profit/daily', getDailyProfitReport);
 router.get('/profit/monthly', getMonthlyProfitReport);
 router.get('/stock', getStockReport);
 router.get('/employees/payments', getEmployeePaymentsReport);

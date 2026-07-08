@@ -19,6 +19,9 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [receiptOrder, setReceiptOrder] = useState(null);
+  const [payOrder, setPayOrder] = useState(null);
+  const [amountReceived, setAmountReceived] = useState('');
+  const [payError, setPayError] = useState('');
 
   const fetchOrders = async (params = {}) => {
     setLoading(true);
@@ -60,6 +63,42 @@ export default function Orders() {
     }
   };
 
+  const openPayModal = (order) => {
+    setPayOrder(order);
+    setAmountReceived('');
+    setPayError('');
+  };
+
+  const closePayModal = () => {
+    setPayOrder(null);
+    setAmountReceived('');
+    setPayError('');
+  };
+
+  const changeDue = payOrder && Number.isFinite(Number(amountReceived))
+    ? Number(amountReceived) - payOrder.totalAmount
+    : null;
+
+  const confirmPayment = async () => {
+    const received = Number(amountReceived);
+    if (!amountReceived || !Number.isFinite(received) || received < payOrder.totalAmount) {
+      setPayError(`Enter an amount of at least ${formatCurrency(payOrder.totalAmount)}.`);
+      return;
+    }
+    setError('');
+    setSuccess('');
+    try {
+      await salesApi.updatePaymentStatus(payOrder.id, true);
+      setSuccess(
+        `Order #${payOrder.id} marked as paid. Give back ${formatCurrency(received - payOrder.totalAmount)}.`
+      );
+      closePayModal();
+      refresh();
+    } catch (err) {
+      setError(getErrorMessage(err, 'Failed to update payment status'));
+    }
+  };
+
   const handleDelete = async (order) => {
     if (!window.confirm(`Delete order #${order.id}? Consumed stock will be restored.`)) return;
     try {
@@ -90,9 +129,9 @@ export default function Orders() {
       render: (row) => (
         <button
           type="button"
-          onClick={() => handleTogglePaid(row)}
+          onClick={() => (row.isPaid ? handleTogglePaid(row) : openPayModal(row))}
           className={`badge ${row.isPaid ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-          title="Click to toggle payment status"
+          title={row.isPaid ? 'Click to mark as unpaid' : 'Click to mark as paid'}
         >
           {row.isPaid ? 'Paid' : 'Unpaid'}
         </button>
@@ -188,6 +227,54 @@ export default function Orders() {
             Print Receipt
           </button>
         </div>
+      </Modal>
+
+      <Modal open={Boolean(payOrder)} onClose={closePayModal} title={payOrder ? `Mark Order #${payOrder.id} as Paid` : ''} size="sm">
+        {payOrder && (
+          <div className="space-y-4">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Order Total</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(payOrder.totalAmount)}</span>
+            </div>
+
+            <div>
+              <label className="label">Amount received from customer</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                autoFocus
+                className="input"
+                value={amountReceived}
+                onChange={(e) => {
+                  setAmountReceived(e.target.value);
+                  setPayError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') confirmPayment();
+                }}
+              />
+            </div>
+
+            {payError && <p className="text-sm text-red-600">{payError}</p>}
+
+            {!payError && changeDue !== null && amountReceived !== '' && changeDue >= 0 && (
+              <div className="rounded-lg bg-green-50 p-3 text-sm">
+                <span className="text-gray-600">Change to give back: </span>
+                <span className="font-semibold text-green-700">{formatCurrency(changeDue)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button type="button" className="btn-secondary" onClick={closePayModal}>
+                Cancel
+              </button>
+              <button type="button" className="btn-primary" onClick={confirmPayment}>
+                Confirm Paid
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

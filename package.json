@@ -6,7 +6,8 @@
   "scripts": {
     "build": "npm install --include=dev --prefix backend && npm install --include=dev --prefix frontend && VITE_API_URL=/api npm run build --prefix frontend && node scripts/copy-frontend-build.js && npx prisma generate --schema=backend/prisma/schema.prisma",
     "start": "npx prisma migrate deploy --schema=backend/prisma/schema.prisma && node backend/src/server.js",
-    "seed": "node backend/prisma/seed.js"
+    "seed": "node backend/prisma/seed.js",
+    "reset-data": "node backend/prisma/reset-data.js"
   },
   "dependencies": {
     "prisma": "^5.20.0"
