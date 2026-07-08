@@ -9,6 +9,13 @@ The system is split into two independent apps:
 - **backend/** — a Node.js/Express REST API backed by PostgreSQL via Prisma ORM.
 - **frontend/** — a React (Vite) single-page dashboard styled with Tailwind CSS.
 
+Two ways to run this beyond local `npm run dev`:
+
+- **[DEPLOY.md](./DEPLOY.md)** — host it online (Railway) with a real shared
+  Postgres database, one public URL, usable from any computer or phone.
+- **[desktop/](./desktop)** — an offline Windows/Linux desktop app with its
+  own local SQLite database, for a single computer with no internet needed.
+
 ## Features
 
 - JWT authentication with 4 roles: `ADMIN`, `MANAGER`, `CASHIER`, `EMPLOYEE`

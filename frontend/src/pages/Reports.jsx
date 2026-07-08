@@ -22,6 +22,7 @@ const PIE_COLORS = ['#f97316', '#3b82f6', '#22c55e', '#a855f7', '#ef4444', '#eab
 
 export default function Reports() {
   const [profitReport, setProfitReport] = useState([]);
+  const [dailyProfitReport, setDailyProfitReport] = useState([]);
   const [stockReport, setStockReport] = useState(null);
   const [employeePaymentsReport, setEmployeePaymentsReport] = useState(null);
   const [topSellingItems, setTopSellingItems] = useState([]);
@@ -33,13 +34,15 @@ export default function Reports() {
       setLoading(true);
       setError('');
       try {
-        const [profitRes, stockRes, empPayRes, topRes] = await Promise.all([
+        const [profitRes, dailyProfitRes, stockRes, empPayRes, topRes] = await Promise.all([
           reportsApi.getMonthlyProfit(),
+          reportsApi.getDailyProfit({ days: 30 }),
           reportsApi.getStockReport(),
           reportsApi.getEmployeePaymentsReport(),
           reportsApi.getTopSellingItems({ limit: 8 }),
         ]);
         setProfitReport(profitRes.data);
+        setDailyProfitReport(dailyProfitRes.data);
         setStockReport(stockRes.data);
         setEmployeePaymentsReport(empPayRes.data);
         setTopSellingItems(topRes.data);
@@ -88,6 +91,24 @@ export default function Reports() {
     { key: 'paymentDate', header: 'Date', render: (row) => formatDate(row.paymentDate) },
   ];
 
+  const dailyColumns = [
+    { key: 'date', header: 'Date' },
+    { key: 'income', header: 'Income', render: (row) => formatCurrency(row.income) },
+    { key: 'expenses', header: 'Expenses', render: (row) => formatCurrency(row.expenses) },
+    {
+      key: 'profit',
+      header: 'Outcome',
+      render: (row) => (
+        <span className={row.profit >= 0 ? 'font-semibold text-green-600' : 'font-semibold text-red-600'}>
+          {formatCurrency(row.profit)}
+        </span>
+      ),
+    },
+  ];
+
+  const dailyChartData = dailyProfitReport.slice(-14);
+  const dailyTableData = [...dailyProfitReport].reverse();
+
   const topSellingColumns = [
     { key: 'name', header: 'Item' },
     { key: 'category', header: 'Category' },
@@ -116,6 +137,25 @@ export default function Reports() {
             <Bar dataKey="profit" name="Profit" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
+      </div>
+
+      <div className="card">
+        <h3 className="mb-4 text-base font-semibold text-gray-800">Daily Outcome (Last 30 Days)</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={dailyChartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 12 }} />
+            <Tooltip formatter={(value) => formatCurrency(value)} />
+            <Legend />
+            <Bar dataKey="income" name="Income" fill="#22c55e" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="profit" name="Outcome" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+        <div className="mt-4 max-h-80 overflow-y-auto">
+          <DataTable columns={dailyColumns} data={dailyTableData} emptyMessage="No sales or expenses recorded yet." />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

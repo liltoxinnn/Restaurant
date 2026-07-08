@@ -7,6 +7,8 @@ export const getMonthlySales = (params) =>
   api.get('/reports/sales/monthly', { params }).then((res) => res.data);
 export const getMonthlyExpenses = (params) =>
   api.get('/reports/expenses/monthly', { params }).then((res) => res.data);
+export const getDailyProfit = (params) =>
+  api.get('/reports/profit/daily', { params }).then((res) => res.data);
 export const getMonthlyProfit = (params) =>
   api.get('/reports/profit/monthly', { params }).then((res) => res.data);
 export const getStockReport = () => api.get('/reports/stock').then((res) => res.data);

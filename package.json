@@ -1,0 +1,18 @@
+{
+  "name": "restaurant-management-system",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Deployment entrypoint used by Railway: builds the frontend, copies it into the backend, and starts the API server on one origin. Not needed for local development - see backend/README.md and frontend/README.md for that.",
+  "scripts": {
+    "build": "npm install --include=dev --prefix backend && npm install --include=dev --prefix frontend && VITE_API_URL=/api npm run build --prefix frontend && node scripts/copy-frontend-build.js && npx prisma generate --schema=backend/prisma/schema.prisma",
+    "start": "npx prisma migrate deploy --schema=backend/prisma/schema.prisma && node backend/src/server.js",
+    "seed": "node backend/prisma/seed.js",
+    "reset-data": "node backend/prisma/reset-data.js"
+  },
+  "dependencies": {
+    "prisma": "^5.20.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
